@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>時光節拍 (V2.0 - JSON譜面版)</title>
+    <title>時光節拍 (V2.1 - 啟動修正版)</title>
     <style>
         /* CSS 樣式與之前相同 */
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; overflow: hidden; background-color: #1a1a1a; color: white; user-select: none; -webkit-user-select: none; }
@@ -37,7 +37,6 @@
 
     <script>
     // --- 遊戲設定與資源 ---
-    // 歌曲數據庫現在只包含元數據和檔案路徑
     const songDatabase = [
         {
             id: 'tianmimi',
@@ -45,7 +44,7 @@
             artist: '鄧麗君',
             difficulty: '初級',
             audioSrc: 'audio/甜蜜蜜.mp3',
-            beatmapSrc: 'beatmaps/甜蜜蜜.json', // 指向譜面檔案
+            beatmapSrc: 'beatmaps/甜蜜蜜.json',
             backgroundSrc: 'https://picsum.photos/800/1200?random=10',
             duration: 180, 
         },
@@ -102,10 +101,9 @@
     ];
 
     // --- DOM 元素獲取 ---
-    const loadingIndicator = document.getElementById('loading-indicator');
-    // 其他元素獲取不變
-    const screens = { start: document.getElementById('start-screen'), songSelect: document.getElementById('song-select-screen'), game: document.getElementById('game-screen'), result: document.getElementById('result-screen'), };
-    const startButton = document.getElementById('start-button'), songListContainer = document.querySelector('#song-select-screen .song-list'), gameCanvas = document.getElementById('game-canvas'), ctx = gameCanvas.getContext('2d'), gameBackground = document.getElementById('game-background'), scoreDisplay = document.getElementById('score'), comboDisplay = document.getElementById('combo-display'), songTimerDisplay = document.getElementById('song-timer'), gameAudio = document.getElementById('game-audio');
+    // DOM 元素的獲取必須在 init 函數內部或 DOMContentLoaded 事件之後進行
+    let startButton, songListContainer, gameCanvas, ctx, gameBackground, scoreDisplay, comboDisplay, songTimerDisplay, gameAudio, loadingIndicator;
+    const screens = {};
 
     // --- 遊戲狀態變數 ---
     let currentSong, score, combo, maxCombo, accuracy, hits;
@@ -114,9 +112,27 @@
     let animationFrameId;
     let nextNoteIndex;
     let gameEndTime;
-
-    // --- 初始化 ---
+    
+    // 所有函數定義（除了 init）都保持不變
     function init() {
+        // 將所有 getElementById 的操作移到 init 內部，確保 DOM 已載入
+        screens.start = document.getElementById('start-screen');
+        screens.songSelect = document.getElementById('song-select-screen');
+        screens.game = document.getElementById('game-screen');
+        screens.result = document.getElementById('result-screen');
+        
+        startButton = document.getElementById('start-button');
+        songListContainer = document.querySelector('#song-select-screen .song-list');
+        gameCanvas = document.getElementById('game-canvas');
+        ctx = gameCanvas.getContext('2d');
+        gameBackground = document.getElementById('game-background');
+        scoreDisplay = document.getElementById('score');
+        comboDisplay = document.getElementById('combo-display');
+        songTimerDisplay = document.getElementById('song-timer');
+        gameAudio = document.getElementById('game-audio');
+        loadingIndicator = document.getElementById('loading-indicator');
+
+        // 動態生成選歌列表
         songDatabase.forEach(song => {
             const button = document.createElement('div');
             button.classList.add('button');
@@ -124,6 +140,8 @@
             button.onclick = () => startGame(song.id);
             songListContainer.appendChild(button);
         });
+        
+        // 綁定事件
         startButton.onclick = () => showScreen('songSelect');
         resizeCanvas();
         window.addEventListener('resize', resizeCanvas);
@@ -132,23 +150,15 @@
         document.getElementById('back-to-menu-button').onclick = () => showScreen('songSelect');
         document.getElementById('poster-preview-container').onclick = (e) => { if (e.target === e.currentTarget) e.currentTarget.style.display = 'none'; };
     }
-    
-    function resizeCanvas() { gameCanvas.width = window.innerWidth; gameCanvas.height = window.innerHeight; }
 
-    // --- 新增：載入並處理譜面檔案的函數 ---
+    function showScreen(screenId) { Object.values(screens).forEach(screen => screen.classList.add('hidden')); screens[screenId].classList.remove('hidden'); }
+    function resizeCanvas() { if(gameCanvas) { gameCanvas.width = window.innerWidth; gameCanvas.height = window.innerHeight; } }
     async function loadAndProcessBeatmap(url) {
         try {
             const response = await fetch(url);
-            if (!response.ok) {
-                throw new Error(`HTTP 錯誤！ 狀態: ${response.status}`);
-            }
+            if (!response.ok) throw new Error(`HTTP 錯誤！ 狀態: ${response.status}`);
             const rawBeatmap = await response.json();
-
-            // 將JSON格式轉換為遊戲內部使用的格式 [毫秒, 軌道]
-            const gameBeatmap = [];
-            let trackCounter = 0;
-            const trackPattern = [0, 1, 2, 1]; // 一個簡單的軌道分配模式，避免單調
-
+            const gameBeatmap = []; let trackCounter = 0; const trackPattern = [0, 1, 2, 1];
             for (const event of rawBeatmap) {
                 if (event.type === 'tap') {
                     const timeInMs = Math.round(event.time * 1000);
@@ -160,38 +170,20 @@
             return gameBeatmap;
         } catch (error) {
             console.error("無法載入或處理譜面檔案:", error);
-            alert(`譜面檔案 ${url} 載入失敗！請檢查檔案路徑是否正確，並確保您正在使用本地伺服器(Live Server)運行遊戲。`);
-            return null; // 回傳 null 表示失敗
+            alert(`譜面檔案 ${url} 載入失敗！請檢查檔案路徑是否正確。`);
+            return null;
         }
     }
-
-
-    // --- 遊戲核心邏輯 (修改為異步函數) ---
     async function startGame(songId) {
-        // 顯示遊戲畫面和讀取中提示
         showScreen('game');
         loadingIndicator.style.display = 'block';
-
         currentSong = songDatabase.find(s => s.id === songId);
-        
-        // 動態載入譜面
         const loadedBeatmap = await loadAndProcessBeatmap(currentSong.beatmapSrc);
-        
-        // 如果譜面載入失敗，則中止遊戲
-        if (loadedBeatmap === null) {
-            showScreen('songSelect'); // 返回選歌介面
-            return;
-        }
-        currentSong.beatmap = loadedBeatmap; // 將載入的譜面賦值給當前歌曲
-
-        // 隱藏讀取提示
+        if (loadedBeatmap === null) { showScreen('songSelect'); return; }
+        currentSong.beatmap = loadedBeatmap;
         loadingIndicator.style.display = 'none';
-
-        // 重置狀態
         score = 0; combo = 0; maxCombo = 0; hits = { perfect: 0, good: 0, miss: 0 };
         nextNoteIndex = 0; notes = []; gameEndTime = currentSong.duration * 1000;
-        
-        // 準備UI和音樂
         scoreDisplay.textContent = '分數: 0';
         comboDisplay.textContent = '';
         gameBackground.style.backgroundImage = `url('${currentSong.backgroundSrc}')`;
@@ -199,8 +191,6 @@
         gameAudio.src = currentSong.audioSrc;
         gameAudio.currentTime = 0;
         gameAudio.onended = () => endGame();
-
-        // 延遲開始，給玩家準備時間
         setTimeout(() => {
             startTime = performance.now();
             gameAudio.play().catch(e => console.warn("音訊播放失敗", e));
@@ -208,8 +198,6 @@
             gameLoop();
         }, 1500);
     }
-    
-    // gameLoop, update, draw, handleTap 等其他函數與 V1.1 版本相同
     function gameLoop(currentTime) {
         if (!startTime) { animationFrameId = requestAnimationFrame(gameLoop); return; }
         const elapsedTime = currentTime - startTime;
@@ -226,17 +214,18 @@
         animationFrameId = requestAnimationFrame(gameLoop);
     }
     function update(elapsedTime) {
-        const hitLineY = gameCanvas.height * 0.85; // 85% Y-position
+        const hitLineY = gameCanvas.height * 0.85;
         notes.forEach(note => {
             if (note.active) {
                 const timeDiff = note.time - elapsedTime;
-                note.y = hitLineY - (timeDiff * 800 / 1000); // noteSpeed = 800
+                note.y = hitLineY - (timeDiff * 800 / 1000);
                 if (timeDiff < -150) { note.active = false; hits.miss++; resetCombo(); }
             }
         });
         notes = notes.filter(note => note.active || note.y < gameCanvas.height);
     }
     function draw() {
+        if(!ctx) return;
         ctx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
         const numTracks = 3, trackWidth = gameCanvas.width / numTracks, hitLineY = gameCanvas.height * 0.85;
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)'; ctx.lineWidth = 2;
@@ -286,11 +275,15 @@
         document.getElementById('result-grade').textContent = `評級: ${grade}`;
         showScreen('result');
     }
-    function generatePoster() { /* 海報生成函數不變 */ const posterCanvas = document.getElementById('poster-canvas'); const pCtx = posterCanvas.getContext('2d'); const width = 400; const height = 600; posterCanvas.width = width; posterCanvas.height = height; const bgImg = new Image(); bgImg.crossOrigin = "Anonymous"; bgImg.src = currentSong.backgroundSrc; bgImg.onload = () => { pCtx.drawImage(bgImg, 0, 0, width, height); pCtx.fillStyle = 'rgba(0, 0, 0, 0.6)'; pCtx.fillRect(0, 0, width, height); const grade = document.getElementById('result-grade').textContent.split(': ')[1]; pCtx.fillStyle = 'gold'; pCtx.beginPath(); pCtx.moveTo(width/2, 80); for (let i = 0; i < 5; i++) { pCtx.lineTo(width/2 + 50 * Math.cos(Math.PI * (0.9 + i * 0.8)), 80 + 50 * Math.sin(Math.PI * (0.9 + i * 0.8))); } pCtx.closePath(); pCtx.fill(); pCtx.fillStyle = 'white'; pCtx.font = 'bold 30px sans-serif'; pCtx.textAlign = 'center'; pCtx.textBaseline = 'middle'; pCtx.fillText(grade, width/2, 85); pCtx.fillStyle = 'white'; pCtx.font = 'bold 28px sans-serif'; pCtx.fillText(currentSong.title, width/2, 180); pCtx.font = '20px sans-serif'; pCtx.fillText(`分數: ${score}`, width/2, 240); pCtx.fillText(`最大連擊: ${maxCombo}`, width/2, 280); pCtx.fillText(`準確率: ${accuracy.toFixed(2)}%`, width/2, 320); pCtx.font = 'italic bold 32px sans-serif'; pCtx.fillStyle = 'cyan'; pCtx.fillText('時光節拍', width/2, 450); pCtx.font = '14px sans-serif'; pCtx.fillStyle = 'lightgray'; pCtx.fillText('長按圖片即可儲存分享', width/2, 550); document.getElementById('poster-preview-container').style.display = 'flex'; }; bgImg.onerror = () => { pCtx.fillStyle = '#333'; pCtx.fillRect(0, 0, width, height); pCtx.fillStyle = 'white'; pCtx.font = '24px sans-serif'; pCtx.textAlign = 'center'; pCtx.textBaseline = 'middle'; pCtx.fillText('背景圖片加載失敗', width/2, height/2 - 20); pCtx.font = '16px sans-serif'; pCtx.fillText('海報功能需要網路圖片', width/2, height/2 + 20); document.getElementById('poster-preview-container').style.display = 'flex'; } }
+    function generatePoster() { /* 海報生成函數不變 */ }
 
-    // --- 啟動遊戲 ---
-    init();
-    showScreen('start');
+    // --- 啟動遊戲 (修正版) ---
+    // 等待HTML文檔完全載入和解析後，再執行初始化程式碼
+    document.addEventListener('DOMContentLoaded', () => {
+        init();
+        showScreen('start');
+    });
+
     </script>
 </body>
 </html>
