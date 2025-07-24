@@ -316,21 +316,69 @@
         }
     };
     
-    // --- 歌曲數據 (使用新的穩定音源) ---
-    const SongData = {
-        timebeat: {
-            tongnian: { title: '童年', artist: '羅大佑', unlockScore: 0, duration: 19300, audioSrc: 'https://s3.laisky.com/public/songs/童年.mp3', backgroundSrc: 'https://source.unsplash.com/random/800x600/?childhood,play', notes: JSON.parse('[{"time":1.5,"type":"tap"},{"time":3,"type":"tap"},{"time":4.4,"type":"strong"},{"time":6,"type":"tap"},{"time":7.2,"type":"tap"},{"time":9,"type":"strong"},{"time":10.3,"type":"tap"},{"time":11.7,"type":"tap"},{"time":13,"type":"tap"},{"time":14.5,"type":"strong"},{"time":16,"type":"tap"},{"time":17.3,"type":"tap"}]').map(n => ({...n, time: n.time * 1000}))},
-            tianmimi: { title: '甜蜜蜜', artist: '鄧麗君', unlockScore: 6000, duration: 21000, audioSrc: 'https://s3.laisky.com/public/songs/甜蜜蜜.mp3', backgroundSrc: 'https://source.unsplash.com/random/800x600/?sweet,love', notes: JSON.parse('[{"time":2,"type":"tap"},{"time":3.2,"type":"tap"},{"time":4.5,"type":"strong"},{"time":7,"type":"tap"},{"time":8.2,"type":"tap"},{"time":9.4,"type":"tap"},{"time":10.6,"type":"strong"},{"time":11.8,"type":"tap"},{"time":14,"type":"tap"},{"time":15.2,"type":"tap"},{"time":16.5,"type":"strong"},{"time":17.8,"type":"tap"},{"time":19,"type":"tap"}]').map(n => ({...n, time: n.time * 1000}))}
-        },
-        conductor: {
-            yueliang: { title: '月亮代表我的心', artist: '鄧麗君', unlockScore: 0, duration: 17000, audioSrc: 'https://s3.laisky.com/public/songs/月亮代表我的心.mp3', backgroundSrc: 'https://source.unsplash.com/random/800x600/?moon,night', notes: JSON.parse('[{"time":1,"type":"tap"},{"time":2.4,"type":"tap"},{"time":3.6,"type":"strong"},{"time":5,"type":"tap"},{"time":6.2,"type":"tap"},{"time":7.5,"type":"strong"},{"time":8.8,"type":"tap"},{"time":10,"type":"tap"},{"time":11.2,"type":"tap"},{"time":12.6,"type":"strong"},{"time":13.8,"type":"tap"},{"time":15,"type":"tap"}]').map(n => ({...n, time: n.time * 1000}))},
-            henai: { title: '很愛很愛你', artist: '劉若英', unlockScore: 6000, duration: 17000, audioSrc: 'https://s3.laisky.com/public/songs/很愛很愛你.mp3', backgroundSrc: 'https://source.unsplash.com/random/800x600/?love,letter', notes: JSON.parse('[{"time":1.8,"type":"tap"},{"time":3,"type":"tap"},{"time":4.2,"type":"tap"},{"time":5.4,"type":"strong"},{"time":6.6,"type":"tap"},{"time":7.8,"type":"tap"},{"time":9,"type":"tap"},{"time":10.2,"type":"strong"},{"time":11.4,"type":"tap"},{"time":12.6,"type":"tap"},{"time":13.8,"type":"tap"},{"time":15,"type":"strong"}]').map(n => ({...n, time: n.time * 1000}))}
-        },
-        turntable: {
-             naner: { title: '男兒當自強', artist: '林子祥', unlockScore: 0, duration: 19100, audioSrc: 'https://s3.laisky.com/public/songs/男兒當自強.mp3', backgroundSrc: 'https://source.unsplash.com/random/800x600/?kungfu,china', notes: JSON.parse('[{"time":2.5,"type":"strong"},{"time":3.8,"type":"tap"},{"time":5.2,"type":"tap"},{"time":6.6,"type":"strong"},{"time":8,"type":"tap"},{"time":9.2,"type":"tap"},{"time":10.7,"type":"strong"},{"time":12,"type":"tap"},{"time":13.2,"type":"tap"},{"time":14.4,"type":"strong"},{"time":15.8,"type":"tap"},{"time":17.1,"type":"tap"}]').map(n => ({...n, time: n.time * 1000}))},
-             xiaosa: { title: '瀟灑走一回', artist: '葉倩文', unlockScore: 7000, duration: 18000, audioSrc: 'https://s3.laisky.com/public/songs/瀟灑走一回.mp3', backgroundSrc: 'https://source.unsplash.com/random/800x600/?journey,wind', notes: JSON.parse('[{"time":2.2,"type":"tap"},{"time":3.5,"type":"tap"},{"time":4.7,"type":"strong"},{"time":6,"type":"tap"},{"time":7.3,"type":"tap"},{"time":8.5,"type":"strong"},{"time":9.7,"type":"tap"},{"time":11,"type":"tap"},{"time":12.2,"type":"strong"},{"time":13.4,"type":"tap"},{"time":14.7,"type":"tap"},{"time":16,"type":"strong"}]').map(n => ({...n, time: n.time * 1000}))}
-        }
-    };
+// --- 遊戲設定與資源 (V3.1 - 路徑修正版) ---
+const songDatabase = [
+    { 
+        id: 'tianmimi', 
+        title: '甜蜜蜜', 
+        artist: '鄧麗君', 
+        difficulty: '初級', 
+        audioSrc: 'audio/tian-mi-mi.mp3', // <-- 修改後
+        beatmapSrc: 'beatmaps/tian-mi-mi.json', // <-- 修改後
+        backgroundSrc: 'https://picsum.photos/800/1200?random=10', 
+        duration: 180 
+    },
+    { 
+        id: 'yueliang', 
+        title: '月亮代表我的心', 
+        artist: '鄧麗君', 
+        difficulty: '初級', 
+        audioSrc: 'audio/moon-represents-my-heart.mp3', // <-- 修改後
+        beatmapSrc: 'beatmaps/moon-represents-my-heart.json', // <-- 修改後
+        backgroundSrc: 'https://picsum.photos/800/1200?random=11', 
+        duration: 210 
+    },
+    { 
+        id: 'henaini', 
+        title: '很愛很愛你', 
+        artist: '劉若英', 
+        difficulty: '中級', 
+        audioSrc: 'audio/love-you-very-much.mp3', // <-- 修改後
+        beatmapSrc: 'beatmaps/love-you-very-much.json', // <-- 修改後
+        backgroundSrc: 'https://picsum.photos/800/1200?random=12', 
+        duration: 286 
+    },
+    { 
+        id: 'tongnian', 
+        title: '童年', 
+        artist: '羅大佑', 
+        difficulty: '中級', 
+        audioSrc: 'audio/childhood.mp3', // <-- 修改後
+        beatmapSrc: 'beatmaps/childhood.json', // <-- 修改後
+        backgroundSrc: 'https://picsum.photos/800/1200?random=13', 
+        duration: 230 
+    },
+    { 
+        id: 'xiaosa', 
+        title: '瀟灑走一回', 
+        artist: '葉蒨文', 
+        difficulty: '大師級', 
+        audioSrc: 'audio/walk-gallantly-once.mp3', // <-- 修改後
+        beatmapSrc: 'beatmaps/walk-gallantly-once.json', // <-- 修改後
+        backgroundSrc: 'https://picsum.photos/800/1200?random=14', 
+        duration: 245 
+    },
+    { 
+        id: 'naner', 
+        title: '男兒當自強', 
+        artist: '林子祥', 
+        difficulty: '大師級', 
+        audioSrc: 'audio/a-man-should-strengthen-himself.mp3', // <-- 修改後
+        beatmapSrc: 'beatmaps/a-man-should-strengthen-himself.json', // <-- 修改後
+        backgroundSrc: 'https://picsum.photos/800/1200?random=15', 
+        duration: 262 
+    },
+];
     const SongOrder = { timebeat: ['tongnian', 'tianmimi'], conductor: ['yueliang', 'henai'], turntable: ['naner', 'xiaosa'], };
     
     // --- 排行榜 & 歌曲選擇 ---
