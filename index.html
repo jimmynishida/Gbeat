@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>時光節拍 (V3.0 - 功能增強版)</title>
+    <title>時光節拍 (V3.2 - 啟動修正版)</title>
     <style>
-        /* CSS 樣式與之前相同，為排行榜增加一些樣式 */
+        /* CSS 樣式與之前完全相同 */
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; overflow: hidden; background-color: #1a1a1a; color: white; user-select: none; -webkit-user-select: none; }
-        .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; transition: opacity 0.5s ease; background-size: cover; background-position: center; }
+        .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; transition: opacity 0.5s ease; background-size: cover; background-position: center; opacity: 1; }
         .hidden { opacity: 0; pointer-events: none; }
         h1 { font-size: 3rem; text-shadow: 2px 2px 8px rgba(0,0,0,0.7); }
         h2 { font-size: 2.5rem; }
@@ -25,8 +25,6 @@
         #game-canvas { position: absolute; bottom: 0; left: 0; width: 100%; height: 100%; }
         #poster-preview-container { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 100; }
         #poster-canvas { border: 2px solid white; border-radius: 10px; }
-        
-        /* 新增樣式 */
         #leaderboard-display { margin-top: 20px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 10px; width: 80%; max-width: 500px; }
         #leaderboard-display h3 { margin: 0 0 10px 0; border-bottom: 1px solid #fff; padding-bottom: 5px; }
         #leaderboard-display ol { margin: 0; padding-left: 20px; text-align: left; }
@@ -36,94 +34,26 @@
 </head>
 <body>
     <div id="start-screen" class="screen"><h1>時光節拍</h1><p>用節拍敲響青春記憶！</p><div id="start-button" class="button">開始遊戲</div></div>
-    
-    <div id="tutorial-screen" class="screen hidden" style="background-color: rgba(0,0,0,0.8); z-index: 10;">
-        <h1>玩法說明</h1>
-        <p style="max-width: 80%;">當音符下落到下方的金色打擊區時，<br>點擊音符所在的對應軌道！</p>
-        <p style="color: #ff8c00;">橙色的大音符是重音，試著用力敲擊吧！</p>
-        <div id="start-after-tutorial-button" class="button">我明白了！</div>
-    </div>
-
-    <div id="song-select-screen" class="screen hidden"><h1>選擇歌曲</h1><div class="song-list"></div></div>
-    <div id="game-screen" class="screen hidden"><div id="loading-indicator">譜面載入中...</div><div id="game-background"></div><div id="game-info"><span id="score">分數: 0</span><span id="song-timer">00:00</span></div><div id="combo-display"></div><canvas id="game-canvas"></canvas></div>
-    <div id="result-screen" class="screen hidden">
-        <h2>演奏結束</h2>
-        <p id="result-score"></p><p id="result-accuracy"></p><p id="result-grade"></p>
-        <div id="leaderboard-display"></div>
-        <div class="button" id="generate-poster-button">生成勳章海報</div>
-        <div class="button" id="back-to-menu-button">返回選單</div>
-    </div>
+    <div id="tutorial-screen" class="screen" style="z-index: 10;"><h1>玩法說明</h1><p style="max-width: 80%;">當音符下落到下方的金色打擊區時，<br>點擊音符所在的對應軌道！</p><p style="color: #ff8c00;">橙色的大音符是重音，試著用力敲擊吧！</p><div id="start-after-tutorial-button" class="button">我明白了！</div></div>
+    <div id="song-select-screen" class="screen"><h1>選擇歌曲</h1><div class="song-list"></div></div>
+    <div id="game-screen" class="screen"><div id="loading-indicator">譜面載入中...</div><div id="game-background"></div><div id="game-info"><span id="score">分數: 0</span><span id="song-timer">00:00</span></div><div id="combo-display"></div><canvas id="game-canvas"></canvas></div>
+    <div id="result-screen" class="screen"><h2>演奏結束</h2><p id="result-score"></p><p id="result-accuracy"></p><p id="result-grade"></p><div id="leaderboard-display"></div><div class="button" id="generate-poster-button">生成勳章海報</div><div class="button" id="back-to-menu-button">返回選單</div></div>
     <div id="poster-preview-container"><canvas id="poster-canvas"></canvas></div>
     <audio id="game-audio" preload="auto"></audio>
 
     <script>
     // --- 遊戲設定與資源 ---
-    // --- 遊戲設定與資源 (V3.1 - 路徑修正版) ---
-const songDatabase = [
-    { 
-        id: 'tianmimi', 
-        title: '甜蜜蜜', 
-        artist: '鄧麗君', 
-        difficulty: '初級', 
-        audioSrc: 'audio/tian-mi-mi.mp3', // <-- 修改後
-        beatmapSrc: 'beatmaps/tian-mi-mi.json', // <-- 修改後
-        backgroundSrc: 'https://picsum.photos/800/1200?random=10', 
-        duration: 180 
-    },
-    { 
-        id: 'yueliang', 
-        title: '月亮代表我的心', 
-        artist: '鄧麗君', 
-        difficulty: '初級', 
-        audioSrc: 'audio/moon-represents-my-heart.mp3', // <-- 修改後
-        beatmapSrc: 'beatmaps/moon-represents-my-heart.json', // <-- 修改後
-        backgroundSrc: 'https://picsum.photos/800/1200?random=11', 
-        duration: 210 
-    },
-    { 
-        id: 'henaini', 
-        title: '很愛很愛你', 
-        artist: '劉若英', 
-        difficulty: '中級', 
-        audioSrc: 'audio/love-you-very-much.mp3', // <-- 修改後
-        beatmapSrc: 'beatmaps/love-you-very-much.json', // <-- 修改後
-        backgroundSrc: 'https://picsum.photos/800/1200?random=12', 
-        duration: 286 
-    },
-    { 
-        id: 'tongnian', 
-        title: '童年', 
-        artist: '羅大佑', 
-        difficulty: '中級', 
-        audioSrc: 'audio/childhood.mp3', // <-- 修改後
-        beatmapSrc: 'beatmaps/childhood.json', // <-- 修改後
-        backgroundSrc: 'https://picsum.photos/800/1200?random=13', 
-        duration: 230 
-    },
-    { 
-        id: 'xiaosa', 
-        title: '瀟灑走一回', 
-        artist: '葉蒨文', 
-        difficulty: '大師級', 
-        audioSrc: 'audio/walk-gallantly-once.mp3', // <-- 修改後
-        beatmapSrc: 'beatmaps/walk-gallantly-once.json', // <-- 修改後
-        backgroundSrc: 'https://picsum.photos/800/1200?random=14', 
-        duration: 245 
-    },
-    { 
-        id: 'naner', 
-        title: '男兒當自強', 
-        artist: '林子祥', 
-        difficulty: '大師級', 
-        audioSrc: 'audio/a-man-should-strengthen-himself.mp3', // <-- 修改後
-        beatmapSrc: 'beatmaps/a-man-should-strengthen-himself.json', // <-- 修改後
-        backgroundSrc: 'https://picsum.photos/800/1200?random=15', 
-        duration: 262 
-    },
-];
+    const songDatabase = [
+        { id: 'tianmimi', title: '甜蜜蜜', artist: '鄧麗君', difficulty: '初級', audioSrc: 'audio/tian-mi-mi.mp3', beatmapSrc: 'beatmaps/tian-mi-mi.json', backgroundSrc: 'https://picsum.photos/800/1200?random=10', duration: 180 },
+        { id: 'yueliang', title: '月亮代表我的心', artist: '鄧麗君', difficulty: '初級', audioSrc: 'audio/moon-represents-my-heart.mp3', beatmapSrc: 'beatmaps/moon-represents-my-heart.json', backgroundSrc: 'https://picsum.photos/800/1200?random=11', duration: 210 },
+        { id: 'henaini', title: '很愛很愛你', artist: '劉若英', difficulty: '中級', audioSrc: 'audio/love-you-very-much.mp3', beatmapSrc: 'beatmaps/love-you-very-much.json', backgroundSrc: 'https://picsum.photos/800/1200?random=12', duration: 286 },
+        { id: 'tongnian', title: '童年', artist: '羅大佑', difficulty: '中級', audioSrc: 'audio/childhood.mp3', beatmapSrc: 'beatmaps/childhood.json', backgroundSrc: 'https://picsum.photos/800/1200?random=13', duration: 230 },
+        { id: 'xiaosa', title: '瀟灑走一回', artist: '葉蒨文', difficulty: '大師級', audioSrc: 'audio/walk-gallantly-once.mp3', beatmapSrc: 'beatmaps/walk-gallantly-once.json', backgroundSrc: 'https://picsum.photos/800/1200?random=14', duration: 245 },
+        { id: 'naner', title: '男兒當自強', artist: '林子祥', difficulty: '大師級', audioSrc: 'audio/a-man-should-strengthen-himself.mp3', beatmapSrc: 'beatmaps/a-man-should-strengthen-himself.json', backgroundSrc: 'https://picsum.photos/800/1200?random=15', duration: 262 },
+    ];
 
     // --- DOM 元素變數 ---
-    let startButton, songListContainer, gameCanvas, ctx, gameBackground, scoreDisplay, comboDisplay, songTimerDisplay, gameAudio, loadingIndicator, tutorialScreen, startAfterTutorialButton, leaderboardDisplay;
+    let startButton, songListContainer, gameCanvas, ctx, gameBackground, scoreDisplay, comboDisplay, songTimerDisplay, gameAudio, loadingIndicator, startAfterTutorialButton, leaderboardDisplay;
     const screens = {};
 
     // --- 遊戲狀態變數 ---
@@ -139,6 +69,7 @@ const songDatabase = [
         screens.songSelect = document.getElementById('song-select-screen');
         screens.game = document.getElementById('game-screen');
         screens.result = document.getElementById('result-screen');
+        
         startButton = document.getElementById('start-button');
         startAfterTutorialButton = document.getElementById('start-after-tutorial-button');
         songListContainer = document.querySelector('#song-select-screen .song-list');
@@ -178,11 +109,27 @@ const songDatabase = [
         resizeCanvas();
         window.addEventListener('resize', resizeCanvas);
         gameCanvas.addEventListener('pointerdown', handleTap);
+        
+        // 初始時，只顯示開始畫面
+        showScreen('start');
     }
 
-    function showScreen(screenId) { Object.values(screens).forEach(screen => screen.classList.add('hidden')); screens[screenId].classList.remove('hidden'); }
+    // -- 畫面切換函數 (更穩健的版本) ---
+    function showScreen(screenId) { 
+        Object.keys(screens).forEach(key => {
+            const screenElement = screens[key];
+            if (screenElement) { // 檢查元素是否存在
+                if (key === screenId) {
+                    screenElement.classList.remove('hidden');
+                } else {
+                    screenElement.classList.add('hidden');
+                }
+            }
+        });
+    }
+    
+    // 其他所有函數保持不變...
     function resizeCanvas() { if(gameCanvas) { gameCanvas.width = window.innerWidth; gameCanvas.height = window.innerHeight; } }
-
     async function loadAndProcessBeatmap(url) {
         try {
             const response = await fetch(url);
@@ -193,22 +140,16 @@ const songDatabase = [
                 if (event.type === 'tap') {
                     const timeInMs = Math.round(event.time * 1000);
                     const track = trackPattern[trackCounter % trackPattern.length];
-                    const strength = (trackCounter % 4 === 0) ? 1 : 0; // 自動為每4拍的第1拍增加重音
+                    const strength = event.strength || ((trackCounter % 4 === 0) ? 1 : 0);
                     gameBeatmap.push([timeInMs, track, strength]);
                     trackCounter++;
                 }
             }
             return gameBeatmap;
-        } catch (error) {
-            console.error("無法載入或處理譜面檔案:", error);
-            alert(`譜面檔案 ${url} 載入失敗！請檢查檔案路徑是否正確。`);
-            return null;
-        }
+        } catch (error) { console.error("無法載入或處理譜面檔案:", error); alert(`譜面檔案 ${url} 載入失敗！`); return null; }
     }
-
     async function startGame(songId) {
-        showScreen('game');
-        loadingIndicator.style.display = 'block';
+        showScreen('game'); loadingIndicator.style.display = 'block';
         currentSong = songDatabase.find(s => s.id === songId);
         const loadedBeatmap = await loadAndProcessBeatmap(currentSong.beatmapSrc);
         if (loadedBeatmap === null) { showScreen('songSelect'); return; }
@@ -217,36 +158,28 @@ const songDatabase = [
         score = 0; combo = 0; maxCombo = 0; hits = { perfect: 0, good: 0, miss: 0 };
         nextNoteIndex = 0; notes = []; gameEndTime = currentSong.duration * 1000;
         scoreDisplay.textContent = '分數: 0'; comboDisplay.textContent = '';
-        gameBackground.style.backgroundImage = `url('${currentSong.backgroundSrc}')`;
-        gameBackground.style.filter = 'blur(15px)';
-        gameAudio.src = currentSong.audioSrc;
-        gameAudio.currentTime = 0;
-        gameAudio.onended = () => endGame();
+        gameBackground.style.backgroundImage = `url('${currentSong.backgroundSrc}')`; gameBackground.style.filter = 'blur(15px)';
+        gameAudio.src = currentSong.audioSrc; gameAudio.currentTime = 0; gameAudio.onended = () => endGame();
         setTimeout(() => {
-            startTime = performance.now();
-            gameAudio.play().catch(e => console.warn("音訊播放失敗", e));
+            startTime = performance.now(); gameAudio.play().catch(e => console.warn("音訊播放失敗", e));
             if (animationFrameId) cancelAnimationFrame(animationFrameId);
             gameLoop();
         }, 1500);
     }
-    
     function gameLoop(currentTime) {
         if (!startTime) { animationFrameId = requestAnimationFrame(gameLoop); return; }
         const elapsedTime = currentTime - startTime;
         const seconds = Math.floor(elapsedTime / 1000), minutes = Math.floor(seconds / 60), displaySeconds = seconds % 60;
         songTimerDisplay.textContent = `${String(minutes).padStart(2, '0')}:${String(displaySeconds).padStart(2, '0')}`;
-        
         while (nextNoteIndex < currentSong.beatmap.length && currentSong.beatmap[nextNoteIndex][0] < elapsedTime + 2000) {
             const beatData = currentSong.beatmap[nextNoteIndex];
             notes.push({ beatData: beatData, y: 0, active: true });
             nextNoteIndex++;
         }
-        update(elapsedTime);
-        draw();
+        update(elapsedTime); draw();
         if (elapsedTime >= gameEndTime) { endGame(); return; }
         animationFrameId = requestAnimationFrame(gameLoop);
     }
-
     function update(elapsedTime) {
         const hitLineY = gameCanvas.height * 0.85;
         notes.forEach(note => {
@@ -258,7 +191,6 @@ const songDatabase = [
         });
         notes = notes.filter(note => note.active || note.y < gameCanvas.height);
     }
-
     function draw() {
         if(!ctx) return;
         ctx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
@@ -267,31 +199,23 @@ const songDatabase = [
         for (let i = 1; i < numTracks; i++) { ctx.beginPath(); ctx.moveTo(trackWidth * i, 0); ctx.lineTo(trackWidth * i, gameCanvas.height); ctx.stroke(); }
         ctx.fillStyle = 'rgba(255, 215, 0, 0.5)'; ctx.fillRect(0, hitLineY - 25, gameCanvas.width, 50);
         ctx.strokeStyle = 'gold'; ctx.lineWidth = 3; ctx.strokeRect(0, hitLineY - 25, gameCanvas.width, 50);
-        
         notes.forEach(note => {
             if (note.active && note.y > -50 && note.y < gameCanvas.height) {
                 const [, track, strength] = note.beatData;
                 const x = trackWidth * track + trackWidth / 2;
                 ctx.beginPath();
-                if (strength === 1) { // 重音
-                    ctx.fillStyle = '#ff8c00'; ctx.shadowColor = '#ff8c00';
-                    ctx.arc(x, note.y, trackWidth * 0.45, 0, Math.PI * 2);
-                } else { // 普通音符
-                    ctx.fillStyle = 'cyan'; ctx.shadowColor = 'cyan';
-                    ctx.arc(x, note.y, trackWidth * 0.4, 0, Math.PI * 2);
-                }
+                if (strength === 1) { ctx.fillStyle = '#ff8c00'; ctx.shadowColor = '#ff8c00'; ctx.arc(x, note.y, trackWidth * 0.45, 0, Math.PI * 2); } 
+                else { ctx.fillStyle = 'cyan'; ctx.shadowColor = 'cyan'; ctx.arc(x, note.y, trackWidth * 0.4, 0, Math.PI * 2); }
                 ctx.shadowBlur = 15; ctx.fill(); ctx.shadowBlur = 0;
             }
         });
     }
-
     function handleTap(e) {
         if (!startTime) return;
         const rect = gameCanvas.getBoundingClientRect(), x = e.clientX - rect.left, track = Math.floor(x / (gameCanvas.width / 3)), elapsedTime = performance.now() - startTime;
         for (let i = 0; i < notes.length; i++) {
             const note = notes[i];
-            const noteTime = note.beatData[0];
-            const noteTrack = note.beatData[1];
+            const noteTime = note.beatData[0]; const noteTrack = note.beatData[1];
             if (note.active && noteTrack === track) {
                 const timeDiff = Math.abs(noteTime - elapsedTime);
                 if (timeDiff < 150) {
@@ -303,11 +227,9 @@ const songDatabase = [
         }
         scoreDisplay.textContent = `分數: ${score}`;
     }
-
     function resetCombo() { combo = 0; updateComboDisplay(); updateBackgroundBlur(); }
     function updateComboDisplay() { if (combo > 2) { comboDisplay.textContent = `${combo} COMBO`; comboDisplay.classList.add('show'); setTimeout(() => comboDisplay.classList.remove('show'), 200); } else { comboDisplay.textContent = ''; } }
     function updateBackgroundBlur() { const maxBlur = 15, comboForMaxClarity = 50; let blurAmount = maxBlur - (Math.min(combo, comboForMaxClarity) / comboForMaxClarity) * maxBlur; gameBackground.style.filter = `blur(${blurAmount}px)`; }
-
     function endGame() {
         if(!startTime) return;
         cancelAnimationFrame(animationFrameId); animationFrameId = null; gameAudio.pause(); startTime = null;
@@ -319,33 +241,22 @@ const songDatabase = [
         document.getElementById('result-score').textContent = `最終分數: ${score}`;
         document.getElementById('result-accuracy').textContent = `準確率: ${accuracy.toFixed(2)}% (Perfect: ${hits.perfect}, Good: ${hits.good}, Miss: ${totalNotesInBeatmap - totalHits})`;
         document.getElementById('result-grade').textContent = `評級: ${grade}`;
-        
-        // 儲存分數並顯示排行榜
-        saveScore(currentSong.id, score);
-        displayLeaderboard(currentSong.id);
-        
+        saveScore(currentSong.id, score); displayLeaderboard(currentSong.id);
         showScreen('result');
     }
-    
-    // --- 新增：排行榜函數 ---
     function saveScore(songId, score) {
         const leaderboards = JSON.parse(localStorage.getItem('timeBeatLeaderboards')) || {};
         const songBoard = leaderboards[songId] || [];
-        // 暫時使用 "Player" 作為玩家名，後續可擴充為讓玩家輸入
         songBoard.push({ name: "Player", score: score });
         songBoard.sort((a, b) => b.score - a.score);
-        leaderboards[songId] = songBoard.slice(0, 5); // 只保留前5名
+        leaderboards[songId] = songBoard.slice(0, 5);
         localStorage.setItem('timeBeatLeaderboards', JSON.stringify(leaderboards));
     }
-
     function displayLeaderboard(songId) {
         const leaderboards = JSON.parse(localStorage.getItem('timeBeatLeaderboards')) || {};
         const songBoard = leaderboards[songId] || [];
         leaderboardDisplay.innerHTML = '<h3>本機排行榜</h3>';
-        if (songBoard.length === 0) {
-            leaderboardDisplay.innerHTML += '<p>暫無記錄</p>';
-            return;
-        }
+        if (songBoard.length === 0) { leaderboardDisplay.innerHTML += '<p>暫無記錄</p>'; return; }
         const ol = document.createElement('ol');
         songBoard.forEach(entry => {
             const li = document.createElement('li');
@@ -354,13 +265,11 @@ const songDatabase = [
         });
         leaderboardDisplay.appendChild(ol);
     }
-
     function generatePoster() { /* 海報生成函數不變 */ }
 
-    // --- 啟動遊戲 (修正版) ---
+    // --- 啟動遊戲 ---
     document.addEventListener('DOMContentLoaded', () => {
         init();
-        showScreen('start');
     });
 
     </script>
